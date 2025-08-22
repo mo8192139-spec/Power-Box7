@@ -12,58 +12,41 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 
-interface ProductImage {
+interface GalleryImage {
+  url: string;
   title: string;
-  image: string;
-  popup_link: string;
-  popup_title: string;
+  alt: string;
 }
 
-interface ProductPreviewData {
+interface ProductGalleryData {
   title: string;
-  images: ProductImage[];
-  button: {
-    label: string;
-    popup_link: string;
-    popup_title: string;
-  };
+  images: GalleryImage[];
 }
 
-const defaultProductPreviewData: ProductPreviewData = {
+const defaultProductGalleryData: ProductGalleryData = {
   title: "See What's Inside Your Box",
   images: [
     {
+      url: "https://cdn.builder.io/api/v1/image/assets%2F84282e2d620247d2b8d8845fda2c790e%2F79d471e5bc56457eb2c3b1c3eb6586ae?format=webp&width=800",
       title: "Complete Collection",
-      image:
-        "https://cdn.builder.io/api/v1/image/assets%2F84282e2d620247d2b8d8845fda2c790e%2F79d471e5bc56457eb2c3b1c3eb6586ae?format=webp&width=800",
-      popup_link: "",
-      popup_title: "Product view 1",
+      alt: "Nutritious Snack Box with Breakfast Bars and Delicious Chips - 42 Count",
     },
     {
+      url: "https://cdn.builder.io/api/v1/image/assets%2F84282e2d620247d2b8d8845fda2c790e%2F05b5599b733643de9ed02db80950feb9?format=webp&width=800",
       title: "Inside View",
-      image:
-        "https://cdn.builder.io/api/v1/image/assets%2F84282e2d620247d2b8d8845fda2c790e%2F05b5599b733643de9ed02db80950feb9?format=webp&width=800",
-      popup_link: "",
-      popup_title: "Product view 2",
+      alt: "Inside view of snack box",
     },
     {
+      url: "https://cdn.builder.io/api/v1/image/assets%2F84282e2d620247d2b8d8845fda2c790e%2Fec2c685b6b9d438f97083ea2cdb4458b?format=webp&width=800",
       title: "Beautiful Packaging",
-      image:
-        "https://cdn.builder.io/api/v1/image/assets%2F84282e2d620247d2b8d8845fda2c790e%2Fec2c685b6b9d438f97083ea2cdb4458b?format=webp&width=800",
-      popup_link: "",
-      popup_title: "Product view 3",
+      alt: "Outside box view",
     },
   ],
-  button: {
-    label: "View Product Details",
-    popup_link: "",
-    popup_title: "Product Details",
-  },
 };
 
 export default function InsideBox() {
-  const [productData, setProductData] = useState<ProductPreviewData>(
-    defaultProductPreviewData,
+  const [productData, setProductData] = useState<ProductGalleryData>(
+    defaultProductGalleryData,
   );
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -74,7 +57,7 @@ export default function InsideBox() {
 
   const handleImageChange = (
     index: number,
-    field: keyof ProductImage,
+    field: keyof GalleryImage,
     value: string,
   ) => {
     setProductData((prev) => ({
@@ -111,7 +94,7 @@ export default function InsideBox() {
           data: { publicUrl },
         } = supabase.storage.from("images").getPublicUrl(fileName);
 
-        handleImageChange(index, "image", publicUrl);
+        handleImageChange(index, "url", publicUrl);
       } catch (error) {
         console.error("Upload error:", error);
         alert("Error uploading image. Please try again.");
@@ -119,15 +102,6 @@ export default function InsideBox() {
     }
   };
 
-  const handleButtonChange = (field: string, value: string) => {
-    setProductData((prev) => ({
-      ...prev,
-      button: {
-        ...prev.button,
-        [field]: value,
-      },
-    }));
-  };
 
   const loadData = async () => {
     try {
@@ -252,16 +226,16 @@ export default function InsideBox() {
                   />
                 </div>
 
-                {/* Popup Title */}
+                {/* Alt Text */}
                 <div>
-                  <Label htmlFor={`popup-title-${index}`}>Popup Title</Label>
+                  <Label htmlFor={`alt-text-${index}`}>Alt Text</Label>
                   <Input
-                    id={`popup-title-${index}`}
-                    value={image.popup_title}
+                    id={`alt-text-${index}`}
+                    value={image.alt}
                     onChange={(e) =>
-                      handleImageChange(index, "popup_title", e.target.value)
+                      handleImageChange(index, "alt", e.target.value)
                     }
-                    placeholder="Enter popup modal title..."
+                    placeholder="Enter image alt text..."
                     className="mt-1"
                   />
                 </div>
@@ -271,11 +245,11 @@ export default function InsideBox() {
               <div>
                 <Label>Product Image</Label>
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center mt-1">
-                  {image.image ? (
+                  {image.url ? (
                     <div className="space-y-3">
                       <img
-                        src={image.image}
-                        alt="Product preview"
+                        src={image.url}
+                        alt={image.alt || "Product preview"}
                         className="max-w-full h-32 object-contain mx-auto rounded"
                       />
                       <div className="flex gap-2 justify-center">
@@ -295,7 +269,7 @@ export default function InsideBox() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleImageChange(index, "image", "")}
+                          onClick={() => handleImageChange(index, "url", "")}
                           className="text-red-600"
                         >
                           Remove
@@ -336,9 +310,9 @@ export default function InsideBox() {
                   </Label>
                   <Input
                     id={`image-url-${index}`}
-                    value={image.image}
+                    value={image.url}
                     onChange={(e) =>
-                      handleImageChange(index, "image", e.target.value)
+                      handleImageChange(index, "url", e.target.value)
                     }
                     placeholder="https://example.com/image.jpg"
                     className="text-sm mt-1"
@@ -346,68 +320,30 @@ export default function InsideBox() {
                 </div>
               </div>
 
-              {/* Popup Modal Link */}
-              <div>
-                <Label htmlFor={`popup-link-${index}`}>Popup Modal Link</Label>
-                <div className="flex items-center gap-2 mt-1">
-                  <LinkIcon className="w-4 h-4 text-gray-400" />
-                  <Input
-                    id={`popup-link-${index}`}
-                    value={image.popup_link}
-                    onChange={(e) =>
-                      handleImageChange(index, "popup_link", e.target.value)
-                    }
-                    placeholder="Enter popup modal link..."
-                    className="flex-1"
-                  />
-                </div>
-              </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Section Button */}
+      {/* Preview Section */}
       <Card>
         <CardHeader>
-          <CardTitle>Section Button</CardTitle>
+          <CardTitle>Section Preview</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <Label htmlFor="button-label">Button Label</Label>
-            <Input
-              id="button-label"
-              value={productData.button.label}
-              onChange={(e) => handleButtonChange("label", e.target.value)}
-              placeholder="Enter button label..."
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="button-popup-title">Button Popup Title</Label>
-            <Input
-              id="button-popup-title"
-              value={productData.button.popup_title}
-              onChange={(e) =>
-                handleButtonChange("popup_title", e.target.value)
-              }
-              placeholder="Enter popup title..."
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="button-popup">Popup Modal Link</Label>
-            <div className="flex items-center gap-2 mt-1">
-              <LinkIcon className="w-4 h-4 text-gray-400" />
-              <Input
-                id="button-popup"
-                value={productData.button.popup_link}
-                onChange={(e) =>
-                  handleButtonChange("popup_link", e.target.value)
-                }
-                placeholder="Enter popup modal link..."
-                className="flex-1"
-              />
+        <CardContent>
+          <div className="p-6 bg-blue-50 rounded-lg">
+            <h3 className="text-xl font-bold mb-4">{productData.title}</h3>
+            <div className="grid md:grid-cols-3 gap-4">
+              {productData.images.map((image, index) => (
+                <div key={index} className="bg-white p-4 rounded-lg shadow-sm">
+                  <img
+                    src={image.url}
+                    alt={image.alt}
+                    className="w-full h-32 object-cover rounded mb-2"
+                  />
+                  <h4 className="font-semibold text-sm">{image.title}</h4>
+                </div>
+              ))}
             </div>
           </div>
         </CardContent>
