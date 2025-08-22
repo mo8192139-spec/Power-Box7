@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Star, Save, Link as LinkIcon } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { cn } from "@/lib/utils";
+import { useRealTimeSync } from "@/hooks/use-data-sync";
+import { logDatabaseError } from "@/lib/error-handler";
 
 interface SellerInfo {
   name: string;
@@ -52,6 +54,15 @@ const defaultTrustData: TrustData = {
 export default function Walmart() {
   const [trustData, setTrustData] = useState<TrustData>(defaultTrustData);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Set up real-time sync
+  useRealTimeSync("trust_section", (payload) => {
+    console.log("🔄 Trust section updated via real-time:", payload);
+    if (payload.new && payload.new.content) {
+      setTrustData(payload.new.content);
+    }
+  });
 
   const handleTitleChange = (value: string) => {
     setTrustData((prev) => ({ ...prev, title: value }));
@@ -120,12 +131,13 @@ export default function Walmart() {
       });
 
       if (error) {
-        if (error.code === "42P01") {
+        if (error.code === "42P01" || error.code === "PGRST116") {
           alert(
             "Database tables not set up yet. Please run the setup script first.",
           );
           return;
         }
+        logDatabaseError("Error saving trust section", error);
         throw error;
       }
 
@@ -156,21 +168,40 @@ export default function Walmart() {
           .select("*")
           .single();
 
-        if (error && error.code !== "PGRST116") {
-          console.error("Error loading data:", error);
+        if (error) {
+          if (error.code === "PGRST116" || error.code === "42P01") {
+            console.info("Trust section table not found, using default data");
+          } else {
+            logDatabaseError("Error loading trust section data", error);
+          }
+          setTrustData(defaultTrustData);
           return;
         }
 
         if (data && data.content) {
           setTrustData(data.content);
+        } else {
+          setTrustData(defaultTrustData);
         }
       } catch (error) {
-        console.error("Error loading data:", error);
+        logDatabaseError("Catch block - trust section error", error);
+        console.info("Using default trust data due to database connection issue");
+        setTrustData(defaultTrustData);
+      } finally {
+        setIsLoading(false);
       }
     };
 
     loadData();
   }, []);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
