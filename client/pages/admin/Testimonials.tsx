@@ -8,82 +8,72 @@ import { Badge } from "@/components/ui/badge";
 import { Star, Save, Upload, Image as ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabaseClient";
+import { useRealTimeSync } from "@/hooks/use-data-sync";
+import { logDatabaseError } from "@/lib/error-handler";
 
 interface CustomerReview {
   name: string;
-  image: string;
   rating: number;
-  comment: string;
+  text: string;
+  date: string;
+  verified: boolean;
 }
 
 interface CustomerReviewsData {
   title: string;
-  subtitle: string;
+  overall_rating: number;
+  total_reviews: number;
   reviews: CustomerReview[];
-  footer: {
-    text: string;
-    rating: number;
-  };
 }
 
 const defaultCustomerReviewsData: CustomerReviewsData = {
   title: "What Our Customers Say",
-  subtitle:
-    "Join thousands of satisfied customers who love our nutritious snack boxes",
+  overall_rating: 4.6,
+  total_reviews: 27,
   reviews: [
     {
-      name: "Sarah Johnson",
-      image:
-        "https://images.pexels.com/photos/8872492/pexels-photo-8872492.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop",
+      name: "Sarah M.",
       rating: 5,
-      comment:
-        "Amazing variety of snacks! Perfect for my office team. The breakfast bars are especially delicious and the packaging is so professional.",
+      text: "Amazing variety! Perfect for our office team. Everyone loved the selection of snacks.",
+      date: "2 weeks ago",
+      verified: true,
     },
     {
-      name: "Michael Chen",
-      image:
-        "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop&auto=format&fit=crop&w=150&h=150&q=80",
+      name: "Mike D.",
       rating: 5,
-      comment:
-        "Great value for 42 snacks! My college daughter loves these. Fast delivery and everything arrived in perfect condition.",
+      text: "Great gift idea! Sent this to my college son and he was thrilled with all the different snacks.",
+      date: "1 month ago",
+      verified: true,
     },
     {
-      name: "Emily Rodriguez",
-      image:
-        "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop&auto=format&fit=crop&w=150&h=150&q=80",
-      rating: 5,
-      comment:
-        "The perfect gift! Sent this to my brother in college and he was thrilled. Quality snacks and beautiful presentation with the greeting card.",
+      name: "Lisa K.",
+      rating: 4,
+      text: "Good quality snacks and fast delivery. Would definitely order again.",
+      date: "3 weeks ago",
+      verified: true,
     },
     {
-      name: "David Thompson",
-      image:
-        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop&auto=format&fit=crop&w=150&h=150&q=80",
+      name: "James T.",
       rating: 5,
-      comment:
-        "Ordered for my team at work. Everyone loved the variety - from healthy options to tasty treats. Will definitely order again!",
+      text: "Excellent quality and presentation. The packaging is beautiful and the snacks are fresh and delicious.",
+      date: "1 week ago",
+      verified: true,
     },
     {
-      name: "Jessica Martinez",
-      image:
-        "https://images.pexels.com/photos/1181695/pexels-photo-1181695.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop",
+      name: "Emily R.",
       rating: 5,
-      comment:
-        "Exceeded my expectations! The box is beautifully packaged and the snacks are high quality. Perfect for busy days when I need quick energy.",
+      text: "Perfect for our company break room! Everyone keeps asking where we got these amazing snacks.",
+      date: "5 days ago",
+      verified: true,
     },
     {
-      name: "Robert Wilson",
-      image:
-        "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop&auto=format&fit=crop&w=150&h=150&q=80",
-      rating: 5,
-      comment:
-        "Fantastic service from start to finish. The snacks arrived quickly and were exactly as described. Great for keeping in the car for long trips!",
+      name: "David C.",
+      rating: 4,
+      text: "Great variety and fast shipping. My kids love the breakfast bars and I enjoy the healthier options.",
+      date: "4 days ago",
+      verified: true,
     },
   ],
-  footer: {
-    text: "Based on verified customer reviews",
-    rating: 4.8,
-  },
 };
 
 export default function Testimonials() {
@@ -93,12 +83,30 @@ export default function Testimonials() {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Set up real-time sync
+  useRealTimeSync("customer_reviews", (payload) => {
+    console.log("🔄 Customer reviews updated via real-time:", payload);
+    if (payload.new && payload.new.content) {
+      setReviewsData(payload.new.content);
+    }
+  });
+
   const handleTitleChange = (value: string) => {
     setReviewsData((prev) => ({ ...prev, title: value }));
   };
 
-  const handleSubtitleChange = (value: string) => {
-    setReviewsData((prev) => ({ ...prev, subtitle: value }));
+  const handleOverallRatingChange = (value: string) => {
+    const rating = parseFloat(value);
+    if (!isNaN(rating) && rating >= 0 && rating <= 5) {
+      setReviewsData((prev) => ({ ...prev, overall_rating: rating }));
+    }
+  };
+
+  const handleTotalReviewsChange = (value: string) => {
+    const total = parseInt(value);
+    if (!isNaN(total) && total >= 0) {
+      setReviewsData((prev) => ({ ...prev, total_reviews: total }));
+    }
   };
 
   const handleReviewChange = (
@@ -127,63 +135,15 @@ export default function Testimonials() {
     handleReviewChange(index, "rating", newRating);
   };
 
-  const handleImageUpload = async (
-    index: number,
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      try {
-        // Upload to Supabase Storage
-        const fileExt = file.name.split(".").pop();
-        const fileName = `customer-${index}-${Date.now()}.${fileExt}`;
+  // Note: Image upload functionality removed as customer reviews in the database schema don't include image URLs
+  // Reviews only store: name, rating, text, date, verified
 
-        const { data, error } = await supabase.storage
-          .from("images")
-          .upload(fileName, file);
-
-        if (error) {
-          console.error("Upload error:", error);
-          alert("Error uploading image. Please try again.");
-          return;
-        }
-
-        // Get public URL
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from("images").getPublicUrl(fileName);
-
-        handleReviewChange(index, "image", publicUrl);
-      } catch (error) {
-        console.error("Upload error:", error);
-        alert("Error uploading image. Please try again.");
-      }
-    }
-  };
-
-  const handleFooterChange = (field: string, value: string | number) => {
-    setReviewsData((prev) => ({
-      ...prev,
-      footer: {
-        ...prev.footer,
-        [field]: value,
-      },
-    }));
-  };
-
-  const handleFooterRatingChange = (value: string) => {
-    const rating = parseFloat(value);
-    if (!isNaN(rating) && rating >= 0 && rating <= 5) {
-      handleFooterChange("rating", rating);
-    }
-  };
-
-  const adjustFooterRating = (increment: number) => {
+  const adjustOverallRating = (increment: number) => {
     const newRating = Math.max(
       0,
-      Math.min(5, reviewsData.footer.rating + increment),
+      Math.min(5, reviewsData.overall_rating + increment),
     );
-    handleFooterChange("rating", newRating);
+    setReviewsData((prev) => ({ ...prev, overall_rating: newRating }));
   };
 
   const loadData = async () => {
@@ -193,16 +153,27 @@ export default function Testimonials() {
         .select("*")
         .single();
 
-      if (error && error.code !== "PGRST116") {
-        console.error("Error loading data:", error);
+      if (error) {
+        if (error.code === "PGRST116" || error.code === "42P01") {
+          console.info("Customer reviews table not found, using default data");
+        } else {
+          logDatabaseError("Error loading customer reviews data", error);
+        }
+        setReviewsData(defaultCustomerReviewsData);
         return;
       }
 
-      if (data) {
+      if (data && data.content) {
         setReviewsData(data.content);
+      } else {
+        setReviewsData(defaultCustomerReviewsData);
       }
     } catch (error) {
-      console.error("Error loading data:", error);
+      logDatabaseError("Catch block - customer reviews error", error);
+      console.info(
+        "Using default customer reviews data due to database connection issue",
+      );
+      setReviewsData(defaultCustomerReviewsData);
     } finally {
       setIsLoading(false);
     }
@@ -218,13 +189,28 @@ export default function Testimonials() {
       });
 
       if (error) {
-        console.error("Error saving data:", error);
+        if (error.code === "42P01" || error.code === "PGRST116") {
+          alert(
+            "Database tables not set up yet. Please run the setup script first.",
+          );
+          return;
+        }
+        logDatabaseError("Error saving customer reviews", error);
         alert("Error saving Customer Reviews section. Please try again.");
       } else {
-        alert("Customer Reviews section saved successfully!");
+        // Show success notification
+        const notification = document.createElement("div");
+        notification.className =
+          "fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-md shadow-lg z-50";
+        notification.textContent = "Customer Reviews saved and synced!";
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+          document.body.removeChild(notification);
+        }, 3000);
       }
     } catch (error) {
-      console.error("Error saving data:", error);
+      logDatabaseError("Catch block - saving customer reviews error", error);
       alert("Error saving Customer Reviews section. Please try again.");
     } finally {
       setIsSaving(false);
@@ -284,15 +270,52 @@ export default function Testimonials() {
               className="mt-1"
             />
           </div>
-          <div>
-            <Label htmlFor="section-subtitle">Subtitle</Label>
-            <Textarea
-              id="section-subtitle"
-              value={reviewsData.subtitle}
-              onChange={(e) => handleSubtitleChange(e.target.value)}
-              placeholder="Enter subtitle..."
-              className="mt-1 min-h-[60px]"
-            />
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="overall-rating">Overall Rating</Label>
+              <div className="flex items-center gap-2 mt-1">
+                <Input
+                  id="overall-rating"
+                  type="number"
+                  min="0"
+                  max="5"
+                  step="0.1"
+                  value={reviewsData.overall_rating}
+                  onChange={(e) => handleOverallRatingChange(e.target.value)}
+                  className="w-24"
+                />
+                <div className="flex gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => adjustOverallRating(-0.1)}
+                    disabled={reviewsData.overall_rating <= 0}
+                  >
+                    -
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => adjustOverallRating(0.1)}
+                    disabled={reviewsData.overall_rating >= 5}
+                  >
+                    +
+                  </Button>
+                </div>
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="total-reviews">Total Reviews</Label>
+              <Input
+                id="total-reviews"
+                type="number"
+                min="0"
+                value={reviewsData.total_reviews}
+                onChange={(e) => handleTotalReviewsChange(e.target.value)}
+                placeholder="Total number of reviews..."
+                className="mt-1"
+              />
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -322,79 +345,32 @@ export default function Testimonials() {
                 />
               </div>
 
-              {/* Customer Image */}
+              {/* Review Date */}
               <div>
-                <Label>Customer Photo</Label>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-3 text-center mt-1">
-                  {review.image ? (
-                    <div className="space-y-2">
-                      <img
-                        src={review.image}
-                        alt="Customer photo"
-                        className="w-16 h-16 object-cover rounded-full mx-auto"
-                      />
-                      <div className="flex gap-2 justify-center">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            document
-                              .getElementById(`customer-image-${index}`)
-                              ?.click()
-                          }
-                          className="flex items-center gap-1"
-                        >
-                          <Upload className="w-3 h-3" />
-                          Replace
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleReviewChange(index, "image", "")}
-                          className="text-red-600"
-                        >
-                          Remove
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <ImageIcon className="w-8 h-8 text-gray-400 mx-auto" />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          document
-                            .getElementById(`customer-image-${index}`)
-                            ?.click()
-                        }
-                        className="flex items-center gap-1"
-                      >
-                        <Upload className="w-3 h-3" />
-                        Upload Photo
-                      </Button>
-                    </div>
-                  )}
-                </div>
-
-                <input
-                  id={`customer-image-${index}`}
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => handleImageUpload(index, e)}
-                  className="hidden"
+                <Label htmlFor={`review-date-${index}`}>Review Date</Label>
+                <Input
+                  id={`review-date-${index}`}
+                  value={review.date}
+                  onChange={(e) =>
+                    handleReviewChange(index, "date", e.target.value)
+                  }
+                  placeholder="e.g., '2 weeks ago'..."
+                  className="mt-1"
                 />
+              </div>
 
-                <div className="mt-2">
-                  <Input
-                    value={review.image}
-                    onChange={(e) =>
-                      handleReviewChange(index, "image", e.target.value)
-                    }
-                    placeholder="Or enter image URL..."
-                    className="text-sm"
-                  />
-                </div>
+              {/* Verified Status */}
+              <div className="flex items-center space-x-2 mt-4">
+                <input
+                  type="checkbox"
+                  id={`verified-${index}`}
+                  checked={review.verified}
+                  onChange={(e) =>
+                    handleReviewChange(index, "verified", e.target.checked)
+                  }
+                  className="rounded"
+                />
+                <Label htmlFor={`verified-${index}`}>Verified Purchase</Label>
               </div>
 
               {/* Star Rating */}
@@ -455,14 +431,14 @@ export default function Testimonials() {
                 </div>
               </div>
 
-              {/* Review Comment */}
+              {/* Review Text */}
               <div>
-                <Label htmlFor={`review-comment-${index}`}>Review Text</Label>
+                <Label htmlFor={`review-text-${index}`}>Review Text</Label>
                 <Textarea
-                  id={`review-comment-${index}`}
-                  value={review.comment}
+                  id={`review-text-${index}`}
+                  value={review.text}
                   onChange={(e) =>
-                    handleReviewChange(index, "comment", e.target.value)
+                    handleReviewChange(index, "text", e.target.value)
                   }
                   placeholder="Enter customer review..."
                   className="mt-1 min-h-[80px]"
@@ -473,70 +449,24 @@ export default function Testimonials() {
         ))}
       </div>
 
-      {/* Footer Section */}
+      {/* Preview Section */}
       <Card>
         <CardHeader>
-          <CardTitle>Footer Section</CardTitle>
+          <CardTitle>Section Preview</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <Label htmlFor="footer-text">Footer Text</Label>
-            <Input
-              id="footer-text"
-              value={reviewsData.footer.text}
-              onChange={(e) => handleFooterChange("text", e.target.value)}
-              placeholder="Enter footer text..."
-              className="mt-1"
-            />
-          </div>
-
-          <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <Label className="text-sm font-medium text-blue-800">
-              Overall Rating
-            </Label>
-            <div className="flex items-center gap-4 mt-2">
-              <div className="flex-1">
-                <Input
-                  type="number"
-                  min="0"
-                  max="5"
-                  step="0.1"
-                  value={reviewsData.footer.rating}
-                  onChange={(e) => handleFooterRatingChange(e.target.value)}
-                  className="w-20"
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => adjustFooterRating(-0.1)}
-                  disabled={reviewsData.footer.rating <= 0}
-                >
-                  -
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => adjustFooterRating(0.1)}
-                  disabled={reviewsData.footer.rating >= 5}
-                >
-                  +
-                </Button>
-              </div>
-            </div>
-
-            {/* Star Display */}
-            <div className="flex items-center gap-2 mt-3">
+        <CardContent>
+          <div className="p-6 bg-green-50 rounded-lg">
+            <h3 className="text-xl font-bold mb-2">{reviewsData.title}</h3>
+            <div className="flex items-center gap-2 mb-4">
               <div className="flex">
                 {[...Array(5)].map((_, i) => (
                   <Star
                     key={i}
                     className={cn(
                       "h-5 w-5",
-                      i < Math.floor(reviewsData.footer.rating)
+                      i < Math.floor(reviewsData.overall_rating)
                         ? "text-yellow-400 fill-current"
-                        : i < reviewsData.footer.rating
+                        : i < reviewsData.overall_rating
                           ? "text-yellow-400 fill-current"
                           : "text-gray-300",
                     )}
@@ -544,8 +474,40 @@ export default function Testimonials() {
                 ))}
               </div>
               <Badge variant="secondary">
-                {reviewsData.footer.rating.toFixed(1)} average
+                {reviewsData.overall_rating.toFixed(1)} from{" "}
+                {reviewsData.total_reviews} reviews
               </Badge>
+            </div>
+            <div className="grid md:grid-cols-2 gap-4">
+              {reviewsData.reviews.slice(0, 4).map((review, index) => (
+                <div key={index} className="bg-white p-4 rounded-lg shadow-sm">
+                  <div className="flex items-center gap-2 mb-2">
+                    <strong className="text-sm">{review.name}</strong>
+                    {review.verified && (
+                      <Badge variant="outline" className="text-xs">
+                        Verified
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 mb-2">
+                    {[...Array(5)].map((_, i) => (
+                      <Star
+                        key={i}
+                        className={cn(
+                          "h-3 w-3",
+                          i < review.rating
+                            ? "text-yellow-400 fill-current"
+                            : "text-gray-300",
+                        )}
+                      />
+                    ))}
+                    <span className="text-xs text-gray-500 ml-1">
+                      {review.date}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-600">{review.text}</p>
+                </div>
+              ))}
             </div>
           </div>
         </CardContent>
