@@ -474,7 +474,8 @@ export default function Testimonials() {
                 ))}
               </div>
               <Badge variant="secondary">
-                {reviewsData.overall_rating.toFixed(1)} from {reviewsData.total_reviews} reviews
+                {reviewsData.overall_rating.toFixed(1)} from{" "}
+                {reviewsData.total_reviews} reviews
               </Badge>
             </div>
             <div className="grid md:grid-cols-2 gap-4">

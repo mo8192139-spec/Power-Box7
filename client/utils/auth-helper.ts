@@ -9,12 +9,14 @@ export async function createTestAdminUser() {
 
   try {
     console.log("🔧 Creating test admin user...");
-    
+
     // Try to sign up the test user
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-      email: testEmail,
-      password: testPassword,
-    });
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp(
+      {
+        email: testEmail,
+        password: testPassword,
+      },
+    );
 
     if (signUpError && signUpError.message !== "User already registered") {
       console.error("❌ Error creating test user:", signUpError);
@@ -22,10 +24,11 @@ export async function createTestAdminUser() {
     }
 
     console.log("✅ Test admin user ready:", testEmail);
-    return { 
-      success: true, 
+    return {
+      success: true,
       credentials: { email: testEmail, password: testPassword },
-      message: "Test admin user created. Use admin@test.com / admin123456 to login."
+      message:
+        "Test admin user created. Use admin@test.com / admin123456 to login.",
     };
   } catch (error) {
     console.error("❌ Exception creating test user:", error);
@@ -42,7 +45,7 @@ export async function signInAsTestAdmin() {
 
   try {
     console.log("🔐 Signing in as test admin...");
-    
+
     const { data, error } = await supabase.auth.signInWithPassword({
       email: testEmail,
       password: testPassword,
@@ -66,8 +69,11 @@ export async function signInAsTestAdmin() {
  */
 export async function checkAuthStatus() {
   try {
-    const { data: { session }, error } = await supabase.auth.getSession();
-    
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.getSession();
+
     if (error) {
       console.error("❌ Error checking auth status:", error);
       return { authenticated: false, error: error.message };

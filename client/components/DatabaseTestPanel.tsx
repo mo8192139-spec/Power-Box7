@@ -4,7 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/lib/supabaseClient";
-import { createTestAdminUser, signInAsTestAdmin, checkAuthStatus } from "@/utils/auth-helper";
+import {
+  createTestAdminUser,
+  signInAsTestAdmin,
+  checkAuthStatus,
+} from "@/utils/auth-helper";
 
 export function DatabaseTestPanel() {
   const [testResults, setTestResults] = useState<string[]>([]);
@@ -12,7 +16,10 @@ export function DatabaseTestPanel() {
   const [authStatus, setAuthStatus] = useState<any>(null);
 
   const addResult = (message: string) => {
-    setTestResults(prev => [...prev, `${new Date().toLocaleTimeString()}: ${message}`]);
+    setTestResults((prev) => [
+      ...prev,
+      `${new Date().toLocaleTimeString()}: ${message}`,
+    ]);
   };
 
   const clearResults = () => {
@@ -23,7 +30,7 @@ export function DatabaseTestPanel() {
   const testDatabaseRead = async () => {
     try {
       addResult("🔍 Testing database read access...");
-      
+
       const { data, error } = await supabase
         .from("trust_section")
         .select("*")
@@ -45,21 +52,19 @@ export function DatabaseTestPanel() {
   const testDatabaseWrite = async () => {
     try {
       addResult("✏️ Testing database write access...");
-      
+
       const testData = {
         title: "Test Write - " + new Date().toISOString(),
         seller_info: { name: "Test", rating: 5, reviews_count: 1 },
         walmart_info: { text: "Test", subtext: "Test" },
-        guarantee: { text: "Test", subtext: "Test" }
+        guarantee: { text: "Test", subtext: "Test" },
       };
 
-      const { data, error } = await supabase
-        .from("trust_section")
-        .upsert({
-          id: 999, // Use a test ID
-          content: testData,
-          updated_at: new Date().toISOString(),
-        });
+      const { data, error } = await supabase.from("trust_section").upsert({
+        id: 999, // Use a test ID
+        content: testData,
+        updated_at: new Date().toISOString(),
+      });
 
       if (error) {
         addResult(`❌ Write error: ${error.message}`);
@@ -77,7 +82,9 @@ export function DatabaseTestPanel() {
   const checkAuth = async () => {
     const status = await checkAuthStatus();
     setAuthStatus(status);
-    addResult(`🔐 Auth check: ${status.authenticated ? '✅ Authenticated' : '❌ Not authenticated'}`);
+    addResult(
+      `🔐 Auth check: ${status.authenticated ? "✅ Authenticated" : "❌ Not authenticated"}`,
+    );
     if (status.user) {
       addResult(`👤 User: ${status.user.email}`);
     }
@@ -106,27 +113,29 @@ export function DatabaseTestPanel() {
   const runFullTest = async () => {
     setIsLoading(true);
     clearResults();
-    
+
     addResult("🚀 Starting comprehensive database test...");
-    
+
     // Check auth status first
     await checkAuth();
-    
+
     // Test read access
     const readSuccess = await testDatabaseRead();
-    
+
     // Test write access
     const writeSuccess = await testDatabaseWrite();
-    
+
     addResult("📊 Test Summary:");
-    addResult(`   Read Access: ${readSuccess ? '✅ Working' : '❌ Failed'}`);
-    addResult(`   Write Access: ${writeSuccess ? '✅ Working' : '❌ Failed'}`);
-    addResult(`   Authentication: ${authStatus?.authenticated ? '✅ Active' : '❌ Required'}`);
-    
+    addResult(`   Read Access: ${readSuccess ? "✅ Working" : "❌ Failed"}`);
+    addResult(`   Write Access: ${writeSuccess ? "✅ Working" : "❌ Failed"}`);
+    addResult(
+      `   Authentication: ${authStatus?.authenticated ? "✅ Active" : "❌ Required"}`,
+    );
+
     if (!writeSuccess && !authStatus?.authenticated) {
       addResult("💡 Tip: Try creating and signing in with test admin user");
     }
-    
+
     setIsLoading(false);
   };
 
@@ -151,7 +160,7 @@ export function DatabaseTestPanel() {
             🧹 Clear Results
           </Button>
         </div>
-        
+
         <div className="grid grid-cols-2 gap-2">
           <Button onClick={checkAuth} variant="outline" size="sm">
             🔐 Check Auth
@@ -160,7 +169,7 @@ export function DatabaseTestPanel() {
             👤 Create Test User
           </Button>
         </div>
-        
+
         <div className="grid grid-cols-2 gap-2">
           <Button onClick={signInTestUser} variant="outline" size="sm">
             🔑 Sign In Test User
@@ -186,10 +195,14 @@ export function DatabaseTestPanel() {
 
         <Alert>
           <AlertDescription>
-            <strong>Quick Fix Instructions:</strong><br />
-            1. Click "Create Test User" to set up admin@test.com<br />
-            2. Click "Sign In Test User" to authenticate<br />
-            3. Click "Run Full Test" to verify everything works<br />
+            <strong>Quick Fix Instructions:</strong>
+            <br />
+            1. Click "Create Test User" to set up admin@test.com
+            <br />
+            2. Click "Sign In Test User" to authenticate
+            <br />
+            3. Click "Run Full Test" to verify everything works
+            <br />
             4. Now admin dashboard changes should sync to frontend
           </AlertDescription>
         </Alert>

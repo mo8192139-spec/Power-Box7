@@ -112,7 +112,6 @@ export default function InsideBox() {
     }
   };
 
-
   const loadData = async () => {
     try {
       const { data, error } = await supabase
@@ -355,7 +354,6 @@ export default function InsideBox() {
                   />
                 </div>
               </div>
-
             </CardContent>
           </Card>
         ))}

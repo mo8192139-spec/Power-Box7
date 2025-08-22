@@ -68,7 +68,10 @@ export default function Walmart() {
     setTrustData((prev) => ({ ...prev, title: value }));
   };
 
-  const handleSellerInfoChange = (field: keyof SellerInfo, value: string | number) => {
+  const handleSellerInfoChange = (
+    field: keyof SellerInfo,
+    value: string | number,
+  ) => {
     setTrustData((prev) => ({
       ...prev,
       seller_info: {
@@ -185,7 +188,9 @@ export default function Walmart() {
         }
       } catch (error) {
         logDatabaseError("Catch block - trust section error", error);
-        console.info("Using default trust data due to database connection issue");
+        console.info(
+          "Using default trust data due to database connection issue",
+        );
         setTrustData(defaultTrustData);
       } finally {
         setIsLoading(false);
@@ -328,7 +333,8 @@ export default function Walmart() {
               ))}
             </div>
             <Badge variant="secondary">
-              {trustData.seller_info.rating.toFixed(2)} from {trustData.seller_info.reviews_count} reviews
+              {trustData.seller_info.rating.toFixed(2)} from{" "}
+              {trustData.seller_info.reviews_count} reviews
             </Badge>
           </div>
         </CardContent>
@@ -349,7 +355,9 @@ export default function Walmart() {
               <Input
                 id="walmart-text"
                 value={trustData.walmart_info.text}
-                onChange={(e) => handleWalmartInfoChange("text", e.target.value)}
+                onChange={(e) =>
+                  handleWalmartInfoChange("text", e.target.value)
+                }
                 placeholder="Enter main text..."
                 className="mt-1"
               />
@@ -359,7 +367,9 @@ export default function Walmart() {
               <Input
                 id="walmart-subtext"
                 value={trustData.walmart_info.subtext}
-                onChange={(e) => handleWalmartInfoChange("subtext", e.target.value)}
+                onChange={(e) =>
+                  handleWalmartInfoChange("subtext", e.target.value)
+                }
                 placeholder="Enter subtext..."
                 className="mt-1"
               />
@@ -393,7 +403,9 @@ export default function Walmart() {
               <Input
                 id="guarantee-subtext"
                 value={trustData.guarantee.subtext}
-                onChange={(e) => handleGuaranteeChange("subtext", e.target.value)}
+                onChange={(e) =>
+                  handleGuaranteeChange("subtext", e.target.value)
+                }
                 placeholder="Enter subtext..."
                 className="mt-1"
               />
@@ -401,7 +413,6 @@ export default function Walmart() {
           </div>
         </CardContent>
       </Card>
-
 
       {/* Preview Section */}
       <Card>
