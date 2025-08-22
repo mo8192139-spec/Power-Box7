@@ -11,6 +11,8 @@ import {
   Link as LinkIcon,
 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
+import { useRealTimeSync } from "@/hooks/use-data-sync";
+import { logDatabaseError } from "@/lib/error-handler";
 
 interface GalleryImage {
   url: string;
@@ -50,6 +52,14 @@ export default function InsideBox() {
   );
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Set up real-time sync
+  useRealTimeSync("product_gallery", (payload) => {
+    console.log("🔄 Product gallery updated via real-time:", payload);
+    if (payload.new && payload.new.content) {
+      setProductData(payload.new.content);
+    }
+  });
 
   const handleTitleChange = (value: string) => {
     setProductData((prev) => ({ ...prev, title: value }));
@@ -110,16 +120,27 @@ export default function InsideBox() {
         .select("*")
         .single();
 
-      if (error && error.code !== "PGRST116") {
-        console.error("Error loading data:", error);
+      if (error) {
+        if (error.code === "PGRST116" || error.code === "42P01") {
+          console.info("Product gallery table not found, using default data");
+        } else {
+          logDatabaseError("Error loading product gallery data", error);
+        }
+        setProductData(defaultProductGalleryData);
         return;
       }
 
-      if (data) {
+      if (data && data.content) {
         setProductData(data.content);
+      } else {
+        setProductData(defaultProductGalleryData);
       }
     } catch (error) {
-      console.error("Error loading data:", error);
+      logDatabaseError("Catch block - product gallery error", error);
+      console.info(
+        "Using default product gallery data due to database connection issue",
+      );
+      setProductData(defaultProductGalleryData);
     } finally {
       setIsLoading(false);
     }
@@ -135,14 +156,29 @@ export default function InsideBox() {
       });
 
       if (error) {
-        console.error("Error saving data:", error);
-        alert("Error saving Product Preview section. Please try again.");
+        if (error.code === "42P01" || error.code === "PGRST116") {
+          alert(
+            "Database tables not set up yet. Please run the setup script first.",
+          );
+          return;
+        }
+        logDatabaseError("Error saving product gallery", error);
+        alert("Error saving Product Gallery section. Please try again.");
       } else {
-        alert("Product Preview section saved successfully!");
+        // Show success notification
+        const notification = document.createElement("div");
+        notification.className =
+          "fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-md shadow-lg z-50";
+        notification.textContent = "Product Gallery saved and synced!";
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+          document.body.removeChild(notification);
+        }, 3000);
       }
     } catch (error) {
-      console.error("Error saving data:", error);
-      alert("Error saving Product Preview section. Please try again.");
+      logDatabaseError("Catch block - saving product gallery error", error);
+      alert("Error saving Product Gallery section. Please try again.");
     } finally {
       setIsSaving(false);
     }
