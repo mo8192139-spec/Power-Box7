@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Star, Save, Upload, Image as ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabaseClient";
+import { useRealTimeSync } from "@/hooks/use-data-sync";
+import { logDatabaseError } from "@/lib/error-handler";
 
 interface CustomerReview {
   name: string;
@@ -81,6 +83,14 @@ export default function Testimonials() {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Set up real-time sync
+  useRealTimeSync("customer_reviews", (payload) => {
+    console.log("🔄 Customer reviews updated via real-time:", payload);
+    if (payload.new && payload.new.content) {
+      setReviewsData(payload.new.content);
+    }
+  });
+
   const handleTitleChange = (value: string) => {
     setReviewsData((prev) => ({ ...prev, title: value }));
   };
@@ -125,39 +135,8 @@ export default function Testimonials() {
     handleReviewChange(index, "rating", newRating);
   };
 
-  const handleImageUpload = async (
-    index: number,
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      try {
-        // Upload to Supabase Storage
-        const fileExt = file.name.split(".").pop();
-        const fileName = `customer-${index}-${Date.now()}.${fileExt}`;
-
-        const { data, error } = await supabase.storage
-          .from("images")
-          .upload(fileName, file);
-
-        if (error) {
-          console.error("Upload error:", error);
-          alert("Error uploading image. Please try again.");
-          return;
-        }
-
-        // Get public URL
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from("images").getPublicUrl(fileName);
-
-        // Note: Image upload capability removed as reviews don't store images in the database
-      } catch (error) {
-        console.error("Upload error:", error);
-        alert("Error uploading image. Please try again.");
-      }
-    }
-  };
+  // Note: Image upload functionality removed as customer reviews in the database schema don't include image URLs
+  // Reviews only store: name, rating, text, date, verified
 
   const adjustOverallRating = (increment: number) => {
     const newRating = Math.max(
@@ -174,16 +153,27 @@ export default function Testimonials() {
         .select("*")
         .single();
 
-      if (error && error.code !== "PGRST116") {
-        console.error("Error loading data:", error);
+      if (error) {
+        if (error.code === "PGRST116" || error.code === "42P01") {
+          console.info("Customer reviews table not found, using default data");
+        } else {
+          logDatabaseError("Error loading customer reviews data", error);
+        }
+        setReviewsData(defaultCustomerReviewsData);
         return;
       }
 
-      if (data) {
+      if (data && data.content) {
         setReviewsData(data.content);
+      } else {
+        setReviewsData(defaultCustomerReviewsData);
       }
     } catch (error) {
-      console.error("Error loading data:", error);
+      logDatabaseError("Catch block - customer reviews error", error);
+      console.info(
+        "Using default customer reviews data due to database connection issue",
+      );
+      setReviewsData(defaultCustomerReviewsData);
     } finally {
       setIsLoading(false);
     }
@@ -199,13 +189,28 @@ export default function Testimonials() {
       });
 
       if (error) {
-        console.error("Error saving data:", error);
+        if (error.code === "42P01" || error.code === "PGRST116") {
+          alert(
+            "Database tables not set up yet. Please run the setup script first.",
+          );
+          return;
+        }
+        logDatabaseError("Error saving customer reviews", error);
         alert("Error saving Customer Reviews section. Please try again.");
       } else {
-        alert("Customer Reviews section saved successfully!");
+        // Show success notification
+        const notification = document.createElement("div");
+        notification.className =
+          "fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-md shadow-lg z-50";
+        notification.textContent = "Customer Reviews saved and synced!";
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+          document.body.removeChild(notification);
+        }, 3000);
       }
     } catch (error) {
-      console.error("Error saving data:", error);
+      logDatabaseError("Catch block - saving customer reviews error", error);
       alert("Error saving Customer Reviews section. Please try again.");
     } finally {
       setIsSaving(false);
